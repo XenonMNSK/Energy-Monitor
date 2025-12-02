@@ -7,14 +7,14 @@
 // ===== КОНФИГУРАЦИЯ СИСТЕМЫ =====
 #define PZEM_RX_PIN D4           // Пин RX для SoftwareSerial (приём данных от PZEM)
 #define PZEM_TX_PIN D3           // Пин TX для SoftwareSerial (передача данных к PZEM)
-#define WIFI_SSID "SmartBox"     // SSID Wi‑Fi сети для подключения
-#define WIFI_PASS "SmartBox2021" // Пароль Wi‑Fi сети
+#define WIFI_SSID "SSID"     // SSID Wi‑Fi сети для подключения
+#define WIFI_PASS "PASSWORD" // Пароль Wi‑Fi сети
 
 const char* ota_hostname = "PZEM004MQTT";        // Имя хоста для OTA и MQTT
-const char* mqtt_host = "10.24.1.60";            // IP-адрес MQTT-сервера
+const char* mqtt_host = "10.10.10.10";            // IP-адрес MQTT-сервера
 const int mqtt_port = 1883;                      // Порт MQTT-сервера (стандартный)
-const char* mqtt_user = "Xenon";                 // Логин для аутентификации в MQTT
-const char* mqtt_pass = "Xenon@5986237!2025";    // Пароль для MQTT (символ " экранирован)
+const char* mqtt_user = "UserMQTT";                 // Логин для аутентификации в MQTT
+const char* mqtt_pass = "PassMQTT";    // Пароль для MQTT (символ " экранирован)
 const String mqtt_base_topic = "homeassistant";  // Базовый топпик для публикаций в MQTT
 // =============================
 
@@ -52,9 +52,9 @@ bool swit;                                       // Переменная для 
 
 // Функция построения пользовательского интерфейса
 void build(sets::Builder& b) {
-  //  b.Slider("My slider", 0, 50, 1, "", &slider); // Слайдер: диапазон 0–50, шаг 1
-  //  b.Input("My input", &input);                  // Поле для ввода текста
-  b.Switch("My switch", &swit);                 // Переключатель (on/off)
+  //b.Slider("My slider", 0, 50, 1, "", &slider); // Слайдер: диапазон 0–50, шаг 1
+  //b.Input("My input", &input);                  // Поле для ввода текста
+  //b.Switch("My switch", &swit);                 // Переключатель (on/off)
 }
 
 void setup() {
@@ -164,9 +164,9 @@ PZEMData readPZEM(PZEM004Tv30 &pzem, const String &label) {
   // Проверка на невалидное значение напряжения (NaN)
   // Если значение невалидно — перезапускаем устройство
   if (isnan(d.voltage)) {
-    //delay(1000);
+    delay(1000);
     Serial.println("Устройства PZEM не обнаружены");
-    //ESP.restart();
+    ESP.restart();
   } 
 
   return d;
