@@ -1,5 +1,13 @@
-# Energy-Monitor
-Счетчик потребления электроэнергии на базе Wemos D1 Mini и модулей PZEM-004T
+## Energy-Monitor для Home Assistant
+
+![Home Assistant](https://img.shields.io/badge/HomeAssistant-latest-yellowgreen?style=plastic&logo=homeassistant)
+
+## Содержание.
+* [**_Описание._**](#описание)
+* [**_Возможности._**](#возможности)
+
+## Описание.
+Скетч написан на Arduino IDE для создания счетчика потребления электроэнергии на базе Wemos D1 Mini и модулей PZEM-004T.
 В данном скетче описано подключение 3х модулей PZEM-004T, но по аналогии можно как уменьшить, так и увеличить количество считываемых модулей. 
 > [!NOTE]
 > PZEM‑004T работает по протоколу Modbus RTU. По умолчанию все модули имеют одинаковый адрес (0x01). При подключении нескольких модулей PZEM-004T нужно заранее изменить уникальный адрес: 0x01, 0x02, 0x03 и так далее. Максимальное число устройств на одной шине Modbus — до 247, но на практике ограничиваются 10–20 из‑за падения скорости.
@@ -60,3 +68,6 @@ Many thanks to [Michael Haberler](https://github.com/mhaberler) for his support 
 ## License
 
 This library is open-source software licensed under GNU LGPLv3.
+
+## Разработчик
+**[Деревягин Вадим](https://github.com/XenonMNSK)**
