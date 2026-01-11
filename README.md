@@ -67,7 +67,7 @@ Many thanks to [Michael Haberler](https://github.com/mhaberler) for his support 
 
 ## License
 
-This library is open-source software licensed under GNU LGPLv3.
+Эта библиотека распространяется с открытым исходным кодом по лицензии GNU LGPLv3.
 
 ## Разработчик
 **[Деревягин Вадим](https://github.com/XenonMNSK)**
