@@ -63,7 +63,7 @@ mqtt.subscribe("picomqtt/json/#", [](const char * topic, Stream & stream) {
 
 ## Special thanks
 
-Many thanks to [Michael Haberler](https://github.com/mhaberler) for his support with the MQTT over WebSocket feature.
+Большое спасибо [Santa Claus](https://github.com/santa) for his support with the MQTT over WebSocket feature.
 
 ## License
 
