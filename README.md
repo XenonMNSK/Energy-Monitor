@@ -1,6 +1,8 @@
 ## Energy-Monitor для Home Assistant
 
 ![Home Assistant](https://img.shields.io/badge/HomeAssistant-latest-yellowgreen?style=plastic&logo=homeassistant)
+[![Foo](https://img.shields.io/badge/Website-AlexGyver.ru-blue.svg?style=flat-square)](https://alexgyver.ru/)
+
 
 ## Содержание.
 * [**_Описание._**](#описание)
