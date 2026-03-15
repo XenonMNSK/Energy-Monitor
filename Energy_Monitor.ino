@@ -1,25 +1,27 @@
-#include <Arduino.h>
-#include <PZEM004Tv30.h>
-#include <SoftwareSerial.h>
-#include <SettingsGyver.h>
-#include <PubSubClient.h>
+#include <Arduino.h>          // Стандартная библиотека Arduino — базовая функциональность платформы
+#include <PZEM004Tv30.h>      // Библиотека для работы с энергометром PZEM‑004T версии 3.0
+#include <SoftwareSerial.h>   // Библиотека для создания программного последовательного порта
+#include <PubSubClient.h>     // Библиотека MQTT‑клиента для Arduino
+#include <ESP8266WiFi.h>
 
 // ===== КОНФИГУРАЦИЯ СИСТЕМЫ =====
 #define PZEM_RX_PIN D4           // Пин RX для SoftwareSerial (приём данных от PZEM)
 #define PZEM_TX_PIN D3           // Пин TX для SoftwareSerial (передача данных к PZEM)
-#define WIFI_SSID "SSID"     // SSID Wi‑Fi сети для подключения
-#define WIFI_PASS "PASSWORD" // Пароль Wi‑Fi сети
+#define WIFI_SSID "SSID"         // SSID Wi‑Fi сети для подключения
+#define WIFI_PASS "PASSWORD"     // Пароль Wi‑Fi сети
 
-const char* ota_hostname = "PZEM004MQTT";        // Имя хоста для OTA и MQTT
+const char* ota_hostname = "PZEM2MQTT";           // Имя хоста для OTA и MQTT
 const char* mqtt_host = "10.10.10.10";            // IP-адрес MQTT-сервера
-const int mqtt_port = 1883;                      // Порт MQTT-сервера (стандартный)
-const char* mqtt_user = "UserMQTT";                 // Логин для аутентификации в MQTT
-const char* mqtt_pass = "PassMQTT";    // Пароль для MQTT (символ " экранирован)
-const String mqtt_base_topic = "homeassistant";  // Базовый топпик для публикаций в MQTT
+const int mqtt_port = 1883;                       // Порт MQTT-сервера (стандартный)
+const char* mqtt_user = "UserMQTT";               // Логин для аутентификации в MQTT
+const char* mqtt_pass = "PassMQTT";               // Пароль для MQTT (символ " экранирован)
+const String mqtt_base_topic = "homeassistant";   // Базовый топпик для публикаций в MQTT
 // =============================
 
-WiFiClient espClient;                            // Клиент для работы с Wi‑Fi
-PubSubClient mqttClient(espClient);              // Клиент для работы с MQTT
+// Клиент для работы с Wi‑Fi
+WiFiClient espClient;
+// Клиент для работы с MQTT
+PubSubClient mqttClient(espClient);
 
 // Инициализация SoftwareSerial для связи с устройствами PZEM
 SoftwareSerial pzemSerial(PZEM_RX_PIN, PZEM_TX_PIN);
@@ -41,26 +43,13 @@ struct PZEMData {
 // Экземпляры структуры для трёх устройств
 PZEMData data1, data2, data3;
 
-// Объект для работы с пользовательским интерфейсом
-SettingsGyver sett("Energy Monitor");
-
-unsigned long lastMsg = 0;
-int slider;                                      // Переменная для слайдера в интерфейсе
-String input;                                    // Переменная для текстового ввода в интерфейсе
+unsigned long lastMsg = 0;                       // Переменная для хранения времени (в миллисекундах) последней отправки сообщения MQTT
 String mqttChipID;                               // Переменная для хранения Chip ID в строковом формате
-bool swit;                                       // Переменная для переключателя в интерфейсе
 
-// Функция построения пользовательского интерфейса
-void build(sets::Builder& b) {
-  //b.Slider("My slider", 0, 50, 1, "", &slider); // Слайдер: диапазон 0–50, шаг 1
-  //b.Input("My input", &input);                  // Поле для ввода текста
-  //b.Switch("My switch", &swit);                 // Переключатель (on/off)
-}
 
 void setup() {
-  // Инициализация Serial‑порта для отладки (скорость 115200 бод)
-  Serial.begin(115200);
-  Serial.println();
+  Serial.begin(115200);  // Инициализация Serial‑порта для отладки (скорость 115200 бод)
+  Serial.println();      // выводим пустую строку для разделения сообщений
 
   // Устанавливаем режим работы Wi‑Fi как станция (STA)
   WiFi.mode(WIFI_STA);
@@ -101,19 +90,9 @@ void setup() {
   publishDiscovery(mqttChipID + "_pzem1", 0x01);
   publishDiscovery(mqttChipID + "_pzem2", 0x02);
   publishDiscovery(mqttChipID + "_pzem3", 0x03);
-
-  // Запускаем пользовательский интерфейс
-  sett.begin();
-  
-  // Указываем функцию для построения интерфейса
-  sett.onBuild(build);
 }
 
 void loop() {
-  // Обновляем пользовательский интерфейс
-  // Обрабатываем события интерфейса (нажатия, изменения значений и т. д.)
-  sett.tick();
-
   // Проверяем, подключён ли MQTT‑клиент
   if (!mqttClient.connected()) {
     // Если подключение потеряно — выводим сообщение и пытаемся переподключиться
@@ -215,6 +194,15 @@ void publishDiscovery(const String& name, uint8_t addr) {
     "Частота",              // frequency
     "Коэффициент мощности"  // pf
   };
+  // Массив иконок для каждого параметра (MDI-иконки)
+  const String icons[] = {
+    "mdi:flash",            // voltage — молния (напряжение)
+    "mdi:current-ac",       // current — переменный ток
+    "mdi:lightning-bolt",   // power — разряд молнии (мощность)
+    "mdi:counter",          // energy — счётчик (энергопотребление)
+    "mdi:wave",             // frequency — волна (частота)
+    "mdi:function"          // pf — математическая функция (коэф. мощности)
+  };
 
   // Проходим по всем 6 типам параметров (напряжение, ток, мощность и т. д.)
   for (int i = 0; i < 6; i++) {
@@ -227,8 +215,10 @@ void publishDiscovery(const String& name, uint8_t addr) {
     // Начинаем формировать JSON-payload для MQTT Discovery
     String payload = "{";
 
-    // Добавляем поле "name" — техническое имя датчика в Home Assistant
-    payload += "\"name\": \"" + name + "_" + key + "\",";
+    // Добавляем поле "name" — читаемое имя датчика в Home Assistant
+    //payload += "\"name\": \"" + name + "_" + key + "\",";
+    //payload += "\"name\": \"EnergyCounter\",";
+    payload += "\"name\": \"" + friendlyNames[i] + "_" + String(addr) + "\",";
 
     // Добавляем поле "state_topic" — топпик, откуда HA будет читать текущие значения
     // Пример: homeassistant/pzem1/voltage
@@ -238,10 +228,13 @@ void publishDiscovery(const String& name, uint8_t addr) {
     payload += "\"unit_of_measurement\": \"" + units[i] + "\",";
 
     // Читаемое имя на русском
-    payload += "\"friendly_name\": \"" + friendlyNames[i] + "\",";
+    payload += "\"friendly_name\": \"" + friendlyNames[i] + "_" + String(addr) + "\",";
 
     // Добавляем поле "device_class" — класс устройства для правильной иконки и интерпретации в HA
-    payload += "\"device_class\": \"" + device_class[i] + "\"";
+    payload += "\"device_class\": \"" + device_class[i] + "\",";
+
+    // Добавляем иконку
+    payload += "\"icon\": \"" + icons[i] + "\"";
 
     // Для параметра "energy" (энергия) добавляем специальное поле "state_class"
     // "total_increasing" означает, что значение только растёт (счётчик кВт·ч)
@@ -249,16 +242,27 @@ void publishDiscovery(const String& name, uint8_t addr) {
       payload += ",\"state_class\": \"total_increasing\"";
     }
 
+    // Для параметра "power" (мощность) добавляем специальное поле "state_class"
+    // "measurement" означает, сенсор измеряет текущее значение, а не предсказанное или агрегированное,
+    // и необходим для сбора долгосрочной статистики
+    if (key.equals("power")) {
+      payload += ",\"state_class\": \"measurement\"";
+    }
+
     // Добавляем поле "unique_id" — уникальный идентификатор датчика
     payload += ",\"unique_id\": \"" + name + "_" + key + "\"";
 
     // Добавляем объект "device" — информация об устройстве в целом
     // Используется для группировки датчиков в один девайс в Home Assistant
-    payload += ",\"device\": {\"identifiers\": [\"" + name + "\"], \"name\": \"" + name + "\",\"model\": \"PZEM004T v3\",\"manufacturer\": \"Xenon\" }";
+    //payload += ",\"device\": {\"identifiers\": [\"" + name + "\"], \"name\": \"Energy Monitor\",\"model\": \"PZEM004T v3\",\"manufacturer\": \"Xenon\" }";
+    payload += ",\"device\": {";
+    payload += "\"identifiers\": [\"" + name + "\"],";
+    payload += "\"name\": \"Energy Monitor\",";
+    payload += "\"model\": \"PZEM004T v3\",";
+    payload += "\"manufacturer\": \"Xenon\" }";
 
     // Завершаем JSON-объект
     payload += "}";
-
 
     // Публикуем конфигурационное сообщение в MQTT
     // Параметры:
