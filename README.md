@@ -1,5 +1,6 @@
 ## Energy-Monitor для Home Assistant
 
+[![latest](https://img.shields.io/github/v/release/XenonMNSK/Energy-Monitor.svg?color=brightgreen)](https://github.com/XenonMNSK/Energy-Monitor/releases/latest/download/Energy-Monitor.zip)
 ![Home Assistant](https://img.shields.io/badge/HomeAssistant-latest-yellowgreen?style=plastic&logo=homeassistant)
 
 
