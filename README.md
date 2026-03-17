@@ -1,19 +1,33 @@
 ## Energy-Monitor для Home Assistant
 
 [![latest](https://img.shields.io/github/v/release/XenonMNSK/Energy-Monitor.svg?color=brightgreen)](https://github.com/XenonMNSK/Energy-Monitor/releases)
-![Home Assistant](https://img.shields.io/badge/HomeAssistant-latest-yellowgreen?style=plastic&logo=homeassistant)
+[![Home Assistant](https://img.shields.io/badge/HomeAssistant-latest-yellowgreen?style=plastic&logo=homeassistant)](https://github.com/home-assistant/operating-system/releases)
 
 
 ## Содержание.
-* [**_Описание._**](#описание)
-* [**_Возможности._**](#возможности)
+* [**_Описание._**](#description)
+* [**_Возможности._**](#capabilitys)
+* [**_Баги и обратная связь._**](#bugs)
+* [**_Лицензия._**](#license)
 
+<a id="description"></a>
 ## Описание.
 Скетч написан на Arduino IDE для создания счетчика потребления электроэнергии на базе Wemos D1 Mini и модулей PZEM-004T.
 В данном скетче описано подключение 3х модулей PZEM-004T, но по аналогии можно как уменьшить, так и увеличить количество считываемых модулей. 
 > [!NOTE]
 > PZEM‑004T работает по протоколу Modbus RTU. По умолчанию все модули имеют одинаковый адрес (0x01). При подключении нескольких модулей PZEM-004T нужно заранее изменить уникальный адрес: 0x01, 0x02, 0x03 и так далее. Максимальное число устройств на одной шине Modbus — до 247, но на практике ограничиваются 10–20 из‑за падения скорости.
 
+<a id="capabilitys"></a>
+## Возможности.
+
+## Настройка
+
+<a id="bugs"></a>
+## Баги и обратная связь.
+
+При нахождении багов создавайте [Issue](https://github.com/XenonMNSK/Energy-Monitor/issues). Библиотека открыта для доработки и ваших [Pull Request'ов](https://github.com/XenonMNSK/Energy-Monitor/pulls)!
+
+<a id="license"></a>
 ## Лицензия
 
 Эта библиотека распространяется с открытым исходным кодом по лицензии [MIT](https://github.com/XenonMNSK/Energy-Monitor/blob/main/LICENSE).
