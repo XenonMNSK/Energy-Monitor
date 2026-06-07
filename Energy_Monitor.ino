@@ -27,8 +27,6 @@ PubSubClient mqttClient(espClient);
 SoftwareSerial pzemSerial(PZEM_RX_PIN, PZEM_TX_PIN);
 // Объекты для трёх устройств PZEM с уникальными адресами (0x01, 0x02, 0x03)
 PZEM004Tv30 pzem1(pzemSerial, 0x01);
-PZEM004Tv30 pzem2(pzemSerial, 0x02);
-PZEM004Tv30 pzem3(pzemSerial, 0x03);
 
 // Структура для хранения данных, получаемых от устройства PZEM
 struct PZEMData {
@@ -88,8 +86,6 @@ void setup() {
   // Эти сообщения позволяют автоматически обнаружить устройства в системе
   // Публикуем для каждого из трёх устройств PZEM с уникальные именами на основе Chip ID
   publishDiscovery(mqttChipID + "_pzem1", 0x01);
-  publishDiscovery(mqttChipID + "_pzem2", 0x02);
-  publishDiscovery(mqttChipID + "_pzem3", 0x03);
 }
 
 void loop() {
@@ -115,16 +111,6 @@ void loop() {
     data1 = readPZEM(pzem1, "PZEM1");
     // Публикуем полученные данные в MQTT c уникальным именем "mqttChipID_pzem1"
     publishData(mqttChipID + "_pzem1", data1);
-
-    // Считываем данные со второго устройства PZEM
-    data2 = readPZEM(pzem2, "PZEM2");
-    // Публикуем полученные данные в MQTT c уникальным именем "mqttChipID_pzem2"
-    publishData(mqttChipID + "_pzem2", data2);
-
-    // Считываем данные с третьего устройства PZEM
-    data3 = readPZEM(pzem3, "PZEM3");
-    // Публикуем полученные данные в MQTT c уникальным именем "mqttChipID_pzem3"
-    publishData(mqttChipID + "_pzem3", data3);
   }
 }
 
