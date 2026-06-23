@@ -39,11 +39,12 @@ struct PZEMData {
 };
 
 // Экземпляры структуры для трёх устройств
-PZEMData data1, data2, data3;
+PZEMData data1;
 
 unsigned long lastMsg = 0;                       // Переменная для хранения времени (в миллисекундах) последней отправки сообщения MQTT
 String mqttChipID;                               // Переменная для хранения Chip ID в строковом формате
-
+const int MAX_ERROR_COUNT = 3;                   // Максимальное количество ошибок перед перезагрузкой
+int errorCount = 0;                              // Счётчик ошибок
 
 void setup() {
   Serial.begin(115200);  // Инициализация Serial‑порта для отладки (скорость 115200 бод)
@@ -63,7 +64,7 @@ void setup() {
 
   // После успешного подключения выводим информацию о подключении 
   Serial.println();
-  Serial.print("Connected: ");
+  Serial.print("Успешное подключение к сети Wi-Fi: ");
   Serial.println(WiFi.localIP()); // Выводим локальный IP‑адрес устройства
 
   // Получаем уникальный идентификатор микроконтроллера (Chip ID) как 32‑битное число
@@ -114,9 +115,12 @@ void loop() {
   }
 }
 
-// Функция чтения данных с устройства PZEM
+// Функция чтения данных с устройства PZEM с валидацией полученных значений
 PZEMData readPZEM(PZEM004Tv30 &pzem, const String &label) {
   PZEMData d;
+
+  // Добавляем небольшую задержку перед чтением данных
+  delay(10);
 
   // Считываем параметры с устройства PZEM
   d.voltage = pzem.voltage();
@@ -126,13 +130,88 @@ PZEMData readPZEM(PZEM004Tv30 &pzem, const String &label) {
   d.frequency = pzem.frequency();
   d.pf = pzem.pf();
 
-  // Проверка на невалидное значение напряжения (NaN)
-  // Если значение невалидно — перезапускаем устройство
+  // Флаги валидности данных
+  bool isValid = true;
+  String invalidReasons = "";
+
+  // Проверка на невалидные значения (NaN)
   if (isnan(d.voltage)) {
+    invalidReasons += "NaN voltage, ";
+    isValid = false;
+  }
+  if (isnan(d.current)) {
+    invalidReasons += "NaN current, ";
+    isValid = false;
+  }
+  if (isnan(d.power)) {
+    invalidReasons += "NaN power, ";
+    isValid = false;
+  }
+  if (isnan(d.energy)) {
+    invalidReasons += "NaN energy, ";
+    isValid = false;
+  }
+  if (isnan(d.frequency)) {
+    invalidReasons += "NaN frequency, ";
+    isValid = false;
+  }
+  if (isnan(d.pf)) {
+    invalidReasons += "NaN power factor, ";
+    isValid = false;
+  }
+
+  // Логические проверки границ значений
+  if (d.voltage < 100 || d.voltage > 260) {  // Напряжение: 100–260 В
+    invalidReasons += "voltage вне диапазона (" + String(d.voltage) + " V), ";
+    isValid = false;
+  }
+  if (d.current < 0 || d.current > 100) {  // Ток: 0–100 А
+    invalidReasons += "current вне диапазона (" + String(d.current) + " A), ";
+    isValid = false;
+  }
+  if (d.power < 0 || d.power > 25000) {  // Мощность: 0–25 кВт
+    invalidReasons += "power вне диапазона (" + String(d.power) + " W), ";
+    isValid = false;
+  }
+  if (d.energy < 0 || d.energy > 100000) {  // Энергия: 0–100 000 kWh
+    invalidReasons += "energy вне диапазона (" + String(d.energy) + " kWh), ";
+    isValid = false;
+  }
+  if (d.frequency < 45 || d.frequency > 55) {  // Частота: 45–55 Гц
+    invalidReasons += "frequency вне диапазона (" + String(d.frequency) + " Hz), ";
+    isValid = false;
+  }
+  if (d.pf < 0 || d.pf > 1) {  // Коэффициент мощности: 0–1
+    invalidReasons += "power factor вне диапазона (" + String(d.pf) + "), ";
+    isValid = false;
+  }
+
+  if (!isValid) {
+    errorCount++;
+    Serial.println("Обнаружены невалидные данные от " + label + ": " + invalidReasons);
+    Serial.println("Счётчик ошибок: " + String(errorCount) + "/" + String(MAX_ERROR_COUNT));
+
+    // Сброс всех значений на 0
+    d.voltage = 0;
+    d.current = 0;
+    d.power = 0;
+    d.energy = 0;
+    d.frequency = 0;
+    d.pf = 0;
+
+    // Переинициализация PZEM
+    pzem.resetEnergy();
     delay(1000);
-    Serial.println("Устройства PZEM не обнаружены");
-    ESP.restart();
-  } 
+
+    // Если превышено максимальное количество ошибок — перезагрузка
+    if (errorCount >= MAX_ERROR_COUNT) {
+      Serial.println("Критическое количество ошибок. Перезагрузка ESP...");
+      delay(2000);
+      ESP.restart();
+    }
+  } else {
+    errorCount = 0;  // Сброс счётчика при успешных данных
+  }
 
   return d;
 }
@@ -145,11 +224,11 @@ void connectToMQTT() {
   while (!mqttClient.connected() && attempts < 5) {
     // Пытаемся подключиться с указанием имени хоста, логина и пароля
     if (mqttClient.connect(ota_hostname, mqtt_user, mqtt_pass)) {
-      Serial.println(" присоединён!");
+      Serial.println("Успешное подключение к MQTT серверу!");
       return; // Успешное подключение — выходим из функции
     } else {
       // Вывод кода ошибки подключения
-      Serial.print(" неудачно, rc=");
+      Serial.print("Неудачное подключение к MQTT, rc=");
       Serial.print(mqttClient.state());
       Serial.println(" — повтор попытки через 2 секунды");
       delay(2000); // Ждём 2 секунды перед следующей попыткой
@@ -159,6 +238,7 @@ void connectToMQTT() {
 
   // Если после 5 попыток подключение не удалось — перезапускаем устройство
   if (!mqttClient.connected()) {
+    Serial.print("Перезагрузка ESP...");
     delay(1000);
     ESP.restart();
   }
@@ -204,7 +284,7 @@ void publishDiscovery(const String& name, uint8_t addr) {
     // Добавляем поле "name" — читаемое имя датчика в Home Assistant
     //payload += "\"name\": \"" + name + "_" + key + "\",";
     //payload += "\"name\": \"EnergyCounter\",";
-    payload += "\"name\": \"" + friendlyNames[i] + "_" + String(addr) + "\",";
+    payload += "\"name\": \"" + mqttChipID + "_pzem" + String(addr) + "_" + friendlyNames[i] + "\",";
 
     // Добавляем поле "state_topic" — топпик, откуда HA будет читать текущие значения
     // Пример: homeassistant/pzem1/voltage
