@@ -2,7 +2,10 @@
 #include <PZEM004Tv30.h>      // Библиотека для работы с энергометром PZEM‑004T версии 3.0
 #include <SoftwareSerial.h>   // Библиотека для создания программного последовательного порта
 #include <PubSubClient.h>     // Библиотека MQTT‑клиента для Arduino
-#include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>      // Работа с Wi‑Fi на ESP8266: подключение, статус, IP и т.д.
+#include <ESP8266mDNS.h>      // Поддержка mDNS: позволяет обращаться к устройству по имени (например, PZEM004MQTT.local)
+#include <WiFiUdp.h>          // Поддержка UDP: нужна для некоторых сетевых функций и OTA
+#include <ArduinoOTA.h>       // Поддержка OTA (Over‑The‑Air): обновление прошивки по Wi‑Fi без кабеля
 
 // ===== КОНФИГУРАЦИЯ СИСТЕМЫ =====
 #define PZEM_RX_PIN D4           // Пин RX для SoftwareSerial (приём данных от PZEM)
@@ -52,6 +55,8 @@ void setup() {
 
   // Устанавливаем режим работы Wi‑Fi как станция (STA)
   WiFi.mode(WIFI_STA);
+  // Устанавливаем имя хоста: важно для mDNS и корректной работы OTA
+  WiFi.hostname(ota_hostname);
   // Начинаем подключение к указанной Wi‑Fi сети
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   
@@ -62,6 +67,48 @@ void setup() {
     Serial.print(".");
   }
 
+  // Настройка событий OTA (обновление прошивки по Wi‑Fi)
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";      // Обновление прошивки (скетча)
+    } else {
+      type = "filesystem";  // Обновление файловой системы (FS)
+    }
+    Serial.println("Start updating " + type);
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");  // Событие: обновление завершено
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    // Показываем прогресс в процентах
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    // Обработка ошибок OTA: выводим код и описание
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");      // Ошибка аутентификации (неверный пароль)
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");      // Не удалось начать обновление
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");    // Ошибка соединения
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");    // Ошибка приёма данных
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");        // Ошибка завершения обновления
+    }
+  });
+  
+  // Устанавливаем пароль для OTA: теперь при обновлении потребуется ввести этот пароль
+  ArduinoOTA.setPassword((const char*)"Password");
+
+  // Запускаем OTA‑сервер: теперь устройство готово принимать обновления по Wi‑Fi
+  ArduinoOTA.begin(ota_hostname);
+  
   // После успешного подключения выводим информацию о подключении 
   Serial.println();
   Serial.print("Успешное подключение к сети Wi-Fi: ");
@@ -87,9 +134,16 @@ void setup() {
   // Эти сообщения позволяют автоматически обнаружить устройства в системе
   // Публикуем для каждого из трёх устройств PZEM с уникальные именами на основе Chip ID
   publishDiscovery(mqttChipID + "_pzem1", 0x01);
+
+  // Даём системе время стабилизироваться перед первым опросом PZEM
+  Serial.println("Ожидание 5 секунд перед первым чтением данных с PZEM...");
+  delay(5000);
 }
 
 void loop() {
+  // Обязательно вызываем в loop(): обрабатывает входящие OTA‑запросы
+  ArduinoOTA.handle();
+  
   // Проверяем, подключён ли MQTT‑клиент
   if (!mqttClient.connected()) {
     // Если подключение потеряно — выводим сообщение и пытаемся переподключиться
